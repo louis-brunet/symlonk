@@ -21,14 +21,36 @@ enum SymlonkCommand {
 
 #[derive(Subcommand, Debug)]
 enum SymlonkCreateSubcommand {
+    /// Create one symlink
     Link {
+        /// Path of the symlink that will be created
         #[arg()]
         symlink_name: PathBuf,
 
+        /// Path to which the symlink should point
         #[arg()]
         symlink_target: PathBuf,
     },
-    Links {},
+
+    /// Create symlinks from a symlink declaration file
+    Links {
+        /// Path of a symlink declaration file
+        #[arg()]
+        symlink_declarations: PathBuf,
+
+        // /// Path of a symlink declaration file
+        // #[arg(short, long)]
+        // lock_file: PathBuf,
+
+        // #[arg(short, long, default_value_t = false)]
+        // overwrite: bool,
+        //
+        // #[arg(short, long, default_value_t = false)]
+        // backup: bool,
+        //
+        // #[arg(short, long, default_value_t = false)]
+        // skip: bool,
+    },
 }
 
 fn main() {
@@ -50,7 +72,7 @@ fn main() {
             .expect("create symlink");
         }
 
-        SymlonkCommand::Create(SymlonkCreateSubcommand::Links {}) => {
+        SymlonkCommand::Create(SymlonkCreateSubcommand::Links { symlink_declarations }) => {
             todo!()
         }
     }
