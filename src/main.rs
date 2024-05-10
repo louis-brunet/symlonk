@@ -1,57 +1,17 @@
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use args::{SymlonkArgs, SymlonkCommand, SymlonkCreateSubcommand};
+use clap::Parser;
 
+use crate::config::ConfigFile;
+
+mod args;
+mod config;
+// mod lexer;
 mod link;
 mod log;
-
-/// Simple program to greet a person
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct SymlonkArgs {
-    #[command(subcommand)]
-    command: SymlonkCommand,
-}
-
-#[derive(Subcommand, Debug)]
-enum SymlonkCommand {
-    #[command(subcommand)]
-    Create(SymlonkCreateSubcommand),
-}
-
-#[derive(Subcommand, Debug)]
-enum SymlonkCreateSubcommand {
-    /// Create one symlink
-    Link {
-        /// Path of the symlink that will be created
-        #[arg()]
-        symlink_name: PathBuf,
-
-        /// Path to which the symlink should point
-        #[arg()]
-        symlink_target: PathBuf,
-    },
-
-    /// Create symlinks from a symlink declaration file
-    Links {
-        /// Path of a symlink declaration file
-        #[arg()]
-        symlink_declarations: PathBuf,
-
-        // /// Path of a symlink declaration file
-        // #[arg(short, long)]
-        // lock_file: PathBuf,
-
-        // #[arg(short, long, default_value_t = false)]
-        // overwrite: bool,
-        //
-        // #[arg(short, long, default_value_t = false)]
-        // backup: bool,
-        //
-        // #[arg(short, long, default_value_t = false)]
-        // skip: bool,
-    },
-}
+//
+// mod parser;
 
 fn main() {
     let args = SymlonkArgs::parse();
@@ -63,7 +23,13 @@ fn main() {
         }) => {
             println!("Hello, {:?} -> {:?}", symlink_name, symlink_target);
 
-            let mut create_link_opts = link::CreateLinkOptions::new(false, false, false);
+            let mut create_link_opts = link::CreateLinkOptions::new(
+                false,
+                false,
+                false,
+                PathBuf::from("."),
+                PathBuf::from("."),
+            );
             link::create_link(
                 symlink_name.as_path(),
                 symlink_target.as_path(),
@@ -72,8 +38,41 @@ fn main() {
             .expect("create symlink");
         }
 
-        SymlonkCommand::Create(SymlonkCreateSubcommand::Links { symlink_declarations }) => {
-            todo!()
+        SymlonkCommand::Create(SymlonkCreateSubcommand::Links {
+            symlink_declarations,
+        }) => {
+            let log = log::Logger::new(None);
+            let file_contents =
+                std::fs::read_to_string(symlink_declarations.as_path()).expect("read_to_string");
+            let parsed_file: ConfigFile = match toml::from_str(file_contents.as_str()) {
+                Ok(config) => config,
+                Err(error) => {
+                    log.error(
+                        format!(
+                            "Error when parsing file {}: {}",
+                            symlink_declarations.to_str().unwrap(),
+                            error.message()
+                        )
+                        .as_str(),
+                    );
+                    return;
+                }
+            };
+
+            log.success(format!("parsed file {} : {:?}", symlink_declarations.to_str().unwrap(), parsed_file).as_str());
+
+            let mut options = link::CreateLinkOptions::new(
+                false,
+                false,
+                false,
+                parsed_file.config.source_dir,
+                parsed_file.config.destination_dir,
+            );
+            for (name, target) in parsed_file.symlinks {
+                link::create_link(name.as_path(), target.as_path(), &mut options)
+                    .expect("create_link");
+            }
+            // todo!()
         }
     }
 }

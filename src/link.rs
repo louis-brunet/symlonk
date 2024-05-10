@@ -2,7 +2,7 @@ use std::{
     ffi::OsString,
     io,
     os::unix,
-    path::Path,
+    path::{Path, PathBuf},
     time::SystemTime,
 };
 
@@ -12,14 +12,24 @@ pub struct CreateLinkOptions {
     overwrite_all: bool,
     backup_all: bool,
     skip_all: bool,
+    source_dir: PathBuf,
+    destination_dir: PathBuf,
 }
 
 impl CreateLinkOptions {
-    pub fn new(overwrite_all: bool, backup_all: bool, skip_all: bool) -> Self {
+    pub fn new(
+        overwrite_all: bool,
+        backup_all: bool,
+        skip_all: bool,
+        source_dir: PathBuf,
+        destination_dir: PathBuf,
+    ) -> Self {
         Self {
             overwrite_all,
             backup_all,
             skip_all,
+            source_dir,
+            destination_dir,
         }
     }
 }
@@ -56,13 +66,15 @@ pub fn create_link(
     link_target: &Path,
     options: &mut CreateLinkOptions,
 ) -> std::io::Result<()> {
-    let does_destination_exist = path_exists(link_name)?;
+    let link_name = options.destination_dir.join(link_name);
+    let link_target = options.source_dir.join(link_target);
+
+    let does_destination_exist = path_exists(link_name.as_path())?;
     let is_all_action = options.overwrite_all || options.backup_all || options.skip_all;
     let mut action = None;
     let mut overwrite = options.overwrite_all;
     let mut backup = options.backup_all;
     let mut skip = options.skip_all;
-    // let logger = log::Logger::
     let log = log::Logger::new(None);
 
     if does_destination_exist && !is_all_action {
@@ -75,7 +87,7 @@ pub fn create_link(
         if current_target.as_path() == link_target {
             log.info(
                 format!(
-                    "{} is already linked to {}",
+                    "skip {}, already linked to {}",
                     link_name.to_str().unwrap(),
                     link_target.to_str().unwrap()
                 )
@@ -83,7 +95,7 @@ pub fn create_link(
             );
             skip = true;
         } else {
-            action = prompt_existing_destination(link_name, link_target)?;
+            action = prompt_existing_destination(link_name.as_path(), link_target.as_path())?;
         }
     }
 
@@ -98,10 +110,10 @@ pub fn create_link(
     }
 
     if skip || options.skip_all {
-        log.info(format!("skipped {}", link_name.to_str().unwrap()).as_str())
+        // log.info(format!("skipped {}", link_name.to_str().unwrap()).as_str())
     } else {
         if backup || options.backup_all {
-            let mut backup_name = OsString::from(link_name);
+            let mut backup_name = OsString::from(link_name.as_path());
             backup_name.push(".backup");
 
             if path_exists(backup_name.as_os_str())? {
@@ -118,7 +130,7 @@ pub fn create_link(
                 ));
             }
 
-            std::fs::rename(link_name, backup_name.as_os_str())?;
+            std::fs::rename(link_name.as_path(), backup_name.as_os_str())?;
 
             log.success(
                 format!(
@@ -131,11 +143,30 @@ pub fn create_link(
         }
 
         if overwrite || options.overwrite_all {
-            std::fs::remove_file(link_name).expect("remove_file");
+            std::fs::remove_file(link_name.as_path()).expect("remove_file");
             log.success(format!("removed {}", link_name.to_str().unwrap()).as_str())
         }
 
-        unix::fs::symlink(link_target, link_name).expect("symlink");
+        let link_parent = link_name.parent();
+        if let Some(parent_path) = link_parent {
+            if !parent_path.exists() {
+                std::fs::create_dir_all(parent_path)?;
+                log.success(
+                    format!("created directory {}", parent_path.to_str().unwrap()).as_str(),
+                );
+            } else if !parent_path.is_dir() {
+                log.error(
+                    format!(
+                        "symlink parent is not a directory: {}",
+                        parent_path.to_str().unwrap(),
+                    )
+                    .as_str(),
+                );
+                return Ok(());
+            }
+        }
+
+        unix::fs::symlink(link_target.as_path(), link_name.as_path()).expect("symlink");
         log.success(
             format!(
                 "linked {} to {}",

@@ -3,6 +3,7 @@ use clap::builder::styling::{AnsiColor, Color, Style};
 pub struct LoggerStyles {
     success: Style,
     info: Style,
+    error: Style,
 }
 
 pub struct Logger {
@@ -15,6 +16,7 @@ impl Logger {
             styles: styles.unwrap_or(LoggerStyles {
                 success: Style::new().fg_color(Some(Color::Ansi(AnsiColor::Green))),
                 info: Style::new().fg_color(Some(Color::Ansi(AnsiColor::White))),
+                error: Style::new().fg_color(Some(Color::Ansi(AnsiColor::Red))),
             }),
         }
     }
@@ -34,6 +36,15 @@ impl Logger {
             self.styles.info,
             message,
             self.styles.info,
+        );
+    }
+
+    pub fn error(&self, message: &str) {
+        println!(
+            "{}[ERROR] {}{:#}",
+            self.styles.error,
+            message,
+            self.styles.error,
         );
     }
 }
