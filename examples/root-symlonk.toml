@@ -1,0 +1,3 @@
+[config]
+destination_dir = "~/code/symlonk/examples/targetdir"
+source_dir = "."

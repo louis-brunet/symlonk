@@ -1,0 +1,3 @@
+[symlinks]
+"/home/louis/code/symlonk/examples/targetdir/b" = "/home/louis/code/symlonk/examples/subdir/B"
+"/home/louis/code/symlonk/examples/targetdir/a" = "/home/louis/code/symlonk/examples/subdir/A"

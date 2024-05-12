@@ -1,0 +1,8 @@
+{
+  "$schema": "./generated-schema.json",
+  "symlinks": {
+    "a": "A"
+  },
+  "config": {
+  }
+}

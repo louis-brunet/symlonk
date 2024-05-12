@@ -2,7 +2,7 @@ use std::{
     ffi::OsString,
     io,
     os::unix,
-    path::{Path, PathBuf},
+    path::Path,
     time::SystemTime,
 };
 
@@ -12,8 +12,6 @@ pub struct CreateLinkOptions {
     overwrite_all: bool,
     backup_all: bool,
     skip_all: bool,
-    source_dir: PathBuf,
-    destination_dir: PathBuf,
 }
 
 impl CreateLinkOptions {
@@ -21,15 +19,11 @@ impl CreateLinkOptions {
         overwrite_all: bool,
         backup_all: bool,
         skip_all: bool,
-        source_dir: PathBuf,
-        destination_dir: PathBuf,
     ) -> Self {
         Self {
             overwrite_all,
             backup_all,
             skip_all,
-            source_dir,
-            destination_dir,
         }
     }
 }
@@ -65,17 +59,17 @@ pub fn create_link(
     link_name: &Path,
     link_target: &Path,
     options: &mut CreateLinkOptions,
-) -> std::io::Result<()> {
-    let link_name = options.destination_dir.join(link_name);
-    let link_target = options.source_dir.join(link_target);
+) -> std::io::Result<bool> {
+    // let link_name = options.destination_dir.join(link_name);
+    // let link_target = options.source_dir.join(link_target);
 
-    let does_destination_exist = path_exists(link_name.as_path())?;
+    let does_destination_exist = crate::path::path_exists(link_name)?;
     let is_all_action = options.overwrite_all || options.backup_all || options.skip_all;
     let mut action = None;
     let mut overwrite = options.overwrite_all;
     let mut backup = options.backup_all;
     let mut skip = options.skip_all;
-    let log = log::Logger::new(None);
+    let log = log::Logger::default();
 
     if does_destination_exist && !is_all_action {
         let current_target = if link_name.is_symlink() {
@@ -86,16 +80,15 @@ pub fn create_link(
 
         if current_target.as_path() == link_target {
             log.info(
-                format!(
+                format_args!(
                     "skip {}, already linked to {}",
-                    link_name.to_str().unwrap(),
-                    link_target.to_str().unwrap()
-                )
-                .as_str(),
+                    link_name.to_string_lossy(),
+                    link_target.to_string_lossy()
+                ),
             );
             skip = true;
         } else {
-            action = prompt_existing_destination(link_name.as_path(), link_target.as_path())?;
+            action = prompt_existing_destination(link_name, link_target)?;
         }
     }
 
@@ -110,41 +103,40 @@ pub fn create_link(
     }
 
     if skip || options.skip_all {
-        // log.info(format!("skipped {}", link_name.to_str().unwrap()).as_str())
+        // log.info(format!("skipped {}", link_name.to_string_lossy()).as_str())
     } else {
         if backup || options.backup_all {
-            let mut backup_name = OsString::from(link_name.as_path());
+            let mut backup_name = OsString::from(link_name);
             backup_name.push(".backup");
 
-            if path_exists(backup_name.as_os_str())? {
+            if crate::path::path_exists(backup_name.as_os_str())? {
                 let timestamp = SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap()
                     .as_millis();
 
-                log.info(format!("{} already exists", backup_name.to_str().unwrap()).as_str());
+                log.info(format_args!("{} already exists", backup_name.to_string_lossy()));
                 backup_name = OsString::from(format!(
                     "{}.{}.backup",
-                    link_name.to_str().unwrap(),
+                    link_name.to_string_lossy(),
                     timestamp
                 ));
             }
 
-            std::fs::rename(link_name.as_path(), backup_name.as_os_str())?;
+            std::fs::rename(link_name, backup_name.as_os_str())?;
 
             log.success(
-                format!(
+                format_args!(
                     "moved {} to {}",
-                    link_name.to_str().unwrap(),
-                    backup_name.to_str().unwrap(),
-                )
-                .as_str(),
+                    link_name.to_string_lossy(),
+                    backup_name.to_string_lossy(),
+                ),
             )
         }
 
         if overwrite || options.overwrite_all {
-            std::fs::remove_file(link_name.as_path()).expect("remove_file");
-            log.success(format!("removed {}", link_name.to_str().unwrap()).as_str())
+            std::fs::remove_file(link_name).expect("remove_file");
+            log.success(format_args!("removed {}", link_name.to_string_lossy()))
         }
 
         let link_parent = link_name.parent();
@@ -152,32 +144,32 @@ pub fn create_link(
             if !parent_path.exists() {
                 std::fs::create_dir_all(parent_path)?;
                 log.success(
-                    format!("created directory {}", parent_path.to_str().unwrap()).as_str(),
+                    format_args!("created directory {}", parent_path.to_string_lossy()),
                 );
             } else if !parent_path.is_dir() {
                 log.error(
-                    format!(
+                    format_args!(
                         "symlink parent is not a directory: {}",
-                        parent_path.to_str().unwrap(),
-                    )
-                    .as_str(),
+                        parent_path.to_string_lossy(),
+                    ),
                 );
-                return Ok(());
+                return Ok(false);
             }
         }
 
-        unix::fs::symlink(link_target.as_path(), link_name.as_path()).expect("symlink");
+        unix::fs::symlink(link_target, link_name).expect("symlink");
         log.success(
-            format!(
+            format_args!(
                 "linked {} to {}",
-                link_name.to_str().unwrap(),
-                link_target.to_str().unwrap()
-            )
-            .as_str(),
+                link_name.to_string_lossy(),
+                link_target.to_string_lossy()
+            ),
         );
+
+        return Ok(true);
     }
 
-    Ok(())
+    Ok(false)
 }
 
 fn prompt_existing_destination(
@@ -186,8 +178,9 @@ fn prompt_existing_destination(
 ) -> io::Result<Option<CreateLinkPromptAction>> {
     println!(
         "File already exists: {} (trying to link to {}), what do you want to do?\n[s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all?",
-        link_name.to_str().unwrap(),
-        link_target.file_name().unwrap().to_str().unwrap(),
+        link_name.to_string_lossy(),
+        link_target.to_string_lossy(),
+        // link_target.file_name().unwrap().to_string_lossy(),
     );
 
     let mut input_buf = String::new();
@@ -195,16 +188,4 @@ fn prompt_existing_destination(
 
     let input_char = input_buf.chars().next();
     Ok(input_char.and_then(|ch| CreateLinkPromptAction::try_from(ch).ok()))
-}
-
-fn path_exists<P: AsRef<Path>>(path: P) -> io::Result<bool> {
-    let symlink_metadata =
-        std::fs::symlink_metadata(path)
-            .map(Some)
-            .or_else(|err| match err.kind() {
-                io::ErrorKind::NotFound => Ok(None),
-                e => Err(e),
-            })?;
-
-    Ok(symlink_metadata.is_some())
 }
