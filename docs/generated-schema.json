@@ -5,7 +5,7 @@
   "properties": {
     "config": {
       "title": "Configuration",
-      "description": "",
+      "description": "Either a root configuration or a child configuration that inherits default config values from another configuration file.",
       "oneOf": [
         {
           "type": "object",
@@ -13,13 +13,13 @@
           "properties": {
             "source_dir": {
               "type": "string",
-              "title": "",
-              "description": ""
+              "title": "Symlink source directory",
+              "description": "Prefix joined with each symlink target path"
             },
             "destination_dir": {
               "type": "string",
-              "title": "",
-              "description": ""
+              "title": "Symlink destination directory",
+              "description": "Prefix joined with each symlink name"
             }
           },
           "required": [
@@ -33,20 +33,20 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "extends": {
-              "type": "string",
-              "title": "",
-              "description": ""
-            },
             "source_dir": {
               "type": "string",
-              "title": "",
-              "description": ""
+              "title": "Symlink source directory",
+              "description": "Prefix joined with each symlink target path"
             },
             "destination_dir": {
               "type": "string",
-              "title": "",
-              "description": ""
+              "title": "Symlink destination directory",
+              "description": "Prefix joined with each symlink name"
+            },
+            "extends": {
+              "type": "string",
+              "title": "Parent configuration",
+              "description": "Inherit default configuration values from another configuration file."
             }
           },
           "required": [
@@ -63,12 +63,12 @@
       "patternProperties": {
         "^[a-zA-Z_./-]+$": {
           "type": "string",
-          "title": "Symlink name to target",
+          "title": "Maps symlink name to target path relative to the configured source directory.",
           "description": ""
         }
       },
       "title": "Symlinks",
-      "description": ""
+      "description": "Object whose keys are symlink names and whose values are symlink target paths."
     },
     "$schema": {
       "type": "string",

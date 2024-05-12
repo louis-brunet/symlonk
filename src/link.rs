@@ -1,12 +1,6 @@
-use std::{
-    ffi::OsString,
-    io,
-    os::unix,
-    path::Path,
-    time::SystemTime,
-};
+use std::{ffi::OsString, io, os::unix, path::Path, time::SystemTime};
 
-use crate::log;
+use crate::log::{self, Logger};
 
 pub struct CreateLinkOptions {
     overwrite_all: bool,
@@ -15,11 +9,7 @@ pub struct CreateLinkOptions {
 }
 
 impl CreateLinkOptions {
-    pub fn new(
-        overwrite_all: bool,
-        backup_all: bool,
-        skip_all: bool,
-    ) -> Self {
+    pub fn new(overwrite_all: bool, backup_all: bool, skip_all: bool) -> Self {
         Self {
             overwrite_all,
             backup_all,
@@ -60,9 +50,6 @@ pub fn create_link(
     link_target: &Path,
     options: &mut CreateLinkOptions,
 ) -> std::io::Result<bool> {
-    // let link_name = options.destination_dir.join(link_name);
-    // let link_target = options.source_dir.join(link_target);
-
     let does_destination_exist = crate::path::path_exists(link_name)?;
     let is_all_action = options.overwrite_all || options.backup_all || options.skip_all;
     let mut action = None;
@@ -79,13 +66,11 @@ pub fn create_link(
         };
 
         if current_target.as_path() == link_target {
-            log.info(
-                format_args!(
-                    "skip {}, already linked to {}",
-                    link_name.to_string_lossy(),
-                    link_target.to_string_lossy()
-                ),
-            );
+            log.info(format_args!(
+                "skip {}, already linked to {}",
+                link_name.to_string_lossy(),
+                link_target.to_string_lossy()
+            ));
             skip = true;
         } else {
             action = prompt_existing_destination(link_name, link_target)?;
@@ -115,7 +100,10 @@ pub fn create_link(
                     .unwrap()
                     .as_millis();
 
-                log.info(format_args!("{} already exists", backup_name.to_string_lossy()));
+                log.info(format_args!(
+                    "{} already exists",
+                    backup_name.to_string_lossy()
+                ));
                 backup_name = OsString::from(format!(
                     "{}.{}.backup",
                     link_name.to_string_lossy(),
@@ -125,13 +113,11 @@ pub fn create_link(
 
             std::fs::rename(link_name, backup_name.as_os_str())?;
 
-            log.success(
-                format_args!(
-                    "moved {} to {}",
-                    link_name.to_string_lossy(),
-                    backup_name.to_string_lossy(),
-                ),
-            )
+            log.success(format_args!(
+                "moved {} to {}",
+                link_name.to_string_lossy(),
+                backup_name.to_string_lossy(),
+            ))
         }
 
         if overwrite || options.overwrite_all {
@@ -143,28 +129,25 @@ pub fn create_link(
         if let Some(parent_path) = link_parent {
             if !parent_path.exists() {
                 std::fs::create_dir_all(parent_path)?;
-                log.success(
-                    format_args!("created directory {}", parent_path.to_string_lossy()),
-                );
+                log.success(format_args!(
+                    "create directory {}",
+                    parent_path.to_string_lossy()
+                ));
             } else if !parent_path.is_dir() {
-                log.error(
-                    format_args!(
-                        "symlink parent is not a directory: {}",
-                        parent_path.to_string_lossy(),
-                    ),
-                );
+                log.error(format_args!(
+                    "symlink parent is not a directory: {}",
+                    parent_path.to_string_lossy(),
+                ));
                 return Ok(false);
             }
         }
 
         unix::fs::symlink(link_target, link_name).expect("symlink");
-        log.success(
-            format_args!(
-                "linked {} to {}",
-                link_name.to_string_lossy(),
-                link_target.to_string_lossy()
-            ),
-        );
+        log.success(format_args!(
+            "link {} to {}",
+            link_name.to_string_lossy(),
+            link_target.to_string_lossy()
+        ));
 
         return Ok(true);
     }

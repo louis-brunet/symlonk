@@ -53,14 +53,50 @@ pub fn run() {
                         lock_file_path.to_string_lossy(),
                         error
                     ));
-                    // FIXME: add prompt "create new symlonk project?", auto creating a lock file
-                    // could lead to confusion if user launched from wrong dir or with wrong lock
-                    // file path
-                    log.info(format_args!(
-                        "lock file {} not found, creating",
-                        lock_file_path.to_string_lossy()
-                    ));
-                    LockFile::new(lock_file_path.clone())
+                    match error {
+                        crate::lock::ParseLockFileError::Deserialize(deserialize_error) => {
+                            log.error(format_args!(
+                                "invalid lock file ({}): {:?}",
+                                lock_file_path.to_string_lossy(),
+                                deserialize_error
+                            ));
+
+                            // TODO: graceful exit, don't panic
+                            panic!();
+                        }
+                        crate::lock::ParseLockFileError::Io(io_error) => {
+                            match io_error.kind() {
+                                std::io::ErrorKind::NotFound => {
+                                    let input_create_new_lock_file = log.prompt_char(
+                                        format_args!(
+                                            "lock file not found: {}. Create a new lock file? [y/N]",
+                                            lock_file_path.to_string_lossy(),
+                                        )
+                                    ).expect("prompt_char").is_some_and(|ch| ch.to_ascii_lowercase() == 'y');
+
+                                    if input_create_new_lock_file {
+                                        log.success(format_args!(
+                                            "create lock file {}",
+                                            lock_file_path.to_string_lossy()
+                                        ));
+                                        LockFile::new(lock_file_path.clone())
+                                    } else {
+                                        log.error(format_args!("no lock file, aborting"));
+                                        // TODO: graceful exit, don't panic
+                                        panic!();
+                                    }
+                                }
+                                _ => {
+                                    log.error(format_args!(
+                                        "IO error parsing lock file: {:?}",
+                                        io_error
+                                    ));
+                                    // TODO: graceful exit, don't panic
+                                    panic!();
+                                }
+                            }
+                        }
+                    }
                 });
 
             log.debug(format_args!(
@@ -83,7 +119,7 @@ pub fn run() {
                     match std::fs::remove_file(name.as_path()) {
                         Ok(()) => {
                             lock_file.remove_symlink(name.as_path());
-                            log.success(format_args!("prune: unlinked {}", name.to_string_lossy()))
+                            log.success(format_args!("prune: unlink {}", name.to_string_lossy()))
                         }
                         Err(error) => log.error(format_args!("prune: {}", error)),
                     }
