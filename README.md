@@ -28,9 +28,9 @@ cargo run -- create links ./examples/*/*symlonk.toml
 ```
 
 Options: 
-    - `--prune`: delete links if they are in lock file but not in config
-    - `--verify`: verify that the lock file matches config, that all symlinks in the lock file are created, and that symlinks point to existing files
-    - `--lock-file <LOCK_FILE_PATH>`: path of a symlink declaration file (default: symlonk-lock.toml)
+- `--prune`: delete links if they are in lock file but not in config
+- `--verify`: verify that the lock file matches config, that all symlinks in the lock file are created, and that symlinks point to existing files
+- `--lock-file <LOCK_FILE_PATH>`: path of a symlink declaration file (default: symlonk-lock.toml)
 
 
 
