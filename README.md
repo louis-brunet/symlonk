@@ -3,9 +3,22 @@
 ## Symlink config file
 
 <!-- TODO: executable name -->
-- Generate a json schema:
+- (Optional) Generate a json schema:
     ```bash
-    cargo run -- create schema
+    cargo run -- create schema > path/to/my-generated-schema.json
+    ```
+
+- Write a configuration file
+    ```toml
+    #:schema path/to/my-generated-schema.json 
+
+    [symlinks]
+    "path/from/destination" = "path/from/source"
+
+    [config]
+    extends = "../root-symlonk.toml"
+    source_dir = "."
+    destination_dir = "~/path/to/symlinks"
     ```
 
 <!-- ### Tokens -->
