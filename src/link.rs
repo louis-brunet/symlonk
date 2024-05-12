@@ -176,16 +176,12 @@ fn prompt_existing_destination(
     link_name: &Path,
     link_target: &Path,
 ) -> io::Result<Option<CreateLinkPromptAction>> {
-    println!(
+    let log = Logger::default();
+    let input_char = log.prompt_char(format_args!(
         "File already exists: {} (trying to link to {}), what do you want to do?\n[s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all?",
         link_name.to_string_lossy(),
         link_target.to_string_lossy(),
-        // link_target.file_name().unwrap().to_string_lossy(),
-    );
+    ))?;
 
-    let mut input_buf = String::new();
-    std::io::stdin().read_line(&mut input_buf)?;
-
-    let input_char = input_buf.chars().next();
     Ok(input_char.and_then(|ch| CreateLinkPromptAction::try_from(ch).ok()))
 }
