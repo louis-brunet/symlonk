@@ -25,6 +25,11 @@ pub enum SymlonkCommand {
         #[arg(default_value = LockFile::DEFAULT_LOCK_FILE_PATH)]
         lock_file: PathBuf,
     },
+
+    Unlink {
+        #[arg(default_value = LockFile::DEFAULT_LOCK_FILE_PATH)]
+        lock_file: PathBuf,
+    },
 }
 
 #[derive(Subcommand, Debug)]

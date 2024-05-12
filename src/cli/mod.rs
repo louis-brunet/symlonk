@@ -1,5 +1,7 @@
 mod args;
 
+use std::path::Path;
+
 use clap::Parser;
 
 use crate::{
@@ -148,7 +150,7 @@ pub fn run() {
                 }
             }
 
-            let serialized_lock_file = toml::to_string(&lock_file).expect("toml");
+            let serialized_lock_file = lock_file.to_string().expect("toml");
 
             std::fs::write(lock_file_path.as_path(), serialized_lock_file).expect("write");
 
@@ -167,5 +169,77 @@ pub fn run() {
         } => {
             crate::lock::verify(lock_file_path.as_path(), config_files);
         }
+
+        SymlonkCommand::Unlink {
+            lock_file: lock_file_path,
+        } => {
+            let log = Logger::default();
+            let mut lock_file =
+                crate::lock::parse_lock_file(lock_file_path.as_path()).unwrap_or_else(|error| {
+                    log.debug(format_args!(
+                        "lock file {} could not be parsed: {:?}",
+                        lock_file_path.to_string_lossy(),
+                        error
+                    ));
+                    match error {
+                        crate::lock::ParseLockFileError::Deserialize(deserialize_error) => {
+                            log.error(format_args!(
+                                "invalid lock file ({}): {:?}",
+                                lock_file_path.to_string_lossy(),
+                                deserialize_error
+                            ));
+
+                            // TODO: graceful exit, don't panic
+                            panic!();
+                        }
+                        crate::lock::ParseLockFileError::Io(io_error) => {
+                            match io_error.kind() {
+                                std::io::ErrorKind::NotFound => {
+                                    log.error(format_args!(
+                                        "lock file not found: {}",
+                                        lock_file_path.to_string_lossy()
+                                    ));
+                                    panic!();
+                                }
+                                _ => {
+                                    log.error(format_args!(
+                                        "IO error parsing lock file: {:?}",
+                                        io_error
+                                    ));
+                                    // TODO: graceful exit, don't panic
+                                    panic!();
+                                }
+                            }
+                        }
+                    }
+                });
+
+            for symlink_name in lock_file.symlinks().keys() {
+                let log = Logger::default();
+                match std::fs::remove_file(symlink_name) {
+                    Ok(()) => {
+                        log.success(format_args!("unlink {}", symlink_name.to_string_lossy()))
+                    }
+                    Err(error) => log.error(format_args!("remove_file: {}", error)),
+                }
+            }
+
+            log.success(format_args!("deleted {} symlinks", lock_file.symlink_count()));
+
+            lock_file.remove_symlinks();
+            let serialized = lock_file.to_string().expect("serialize");
+            std::fs::write(lock_file_path.as_path(), serialized).expect("write");
+        }
     }
 }
+
+// fn unlink(symlink_name: &Path, lock_file: &mut LockFile) {
+//     let log = Logger::default();
+//     match std::fs::remove_file(symlink_name) {
+//         Ok(()) => {
+//             lock_file.remove_symlink(symlink_name);
+//             log.success(format_args!("unlink {}", symlink_name.to_string_lossy()))
+//         }
+//         Err(error) => log.error(format_args!("prune: {}", error)),
+//     }
+// }

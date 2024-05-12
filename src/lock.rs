@@ -132,9 +132,13 @@ impl LockFile {
         self.symlinks.remove(name)
     }
 
-    // pub fn symlinks(&self) -> HashMap<PathBuf, PathBuf> {
-    //     self.symlinks
-    // }
+    pub fn remove_symlinks(&mut self) {
+        self.symlinks.clear()
+    }
+
+    pub fn symlinks(&self) -> &HashMap<PathBuf, PathBuf> {
+        &self.symlinks
+    }
 
     pub fn symlink_count(&self) -> usize {
         self.symlinks.len()
@@ -239,6 +243,10 @@ impl LockFile {
             .filter(|(name, _)| !config_symlinks.contains_key(*name))
             .map(|(name, target)| (name.clone(), target.clone()))
             .collect()
+    }
+
+    pub fn to_string(&self) -> Result<String, toml::ser::Error> {
+        toml::to_string(&self)
     }
 }
 
