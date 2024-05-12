@@ -187,7 +187,7 @@ pub fn to_writer<W: std::io::Write>(writer: W) -> serde_json::Result<()> {
                             Some(TypedJsonSchema::Object {
                                 additional_properties: false,
                                 pattern_properties: Some(HashMap::from([(
-                                    String::from(r"^[a-zA-Z_./-]+$"),
+                                    String::from(r"^[a-zA-Z0-9_./-]+$"),
                                     JsonSchema::new(
                                         Some(TypedJsonSchema::String),
                                         "Maps symlink name to target path relative to the configured source directory.",
