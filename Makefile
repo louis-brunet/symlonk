@@ -3,7 +3,7 @@ RUN = $(CARGO) run --
 
 
 build:
-	$(CARGO) build
+	$(CARGO) build --release
 
 schema:
 	$(RUN) create schema | jq > docs/generated-schema.json

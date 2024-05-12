@@ -2,7 +2,6 @@
 
 ## Symlink config file
 
-<!-- TODO: executable name -->
 - (Optional) Generate a json schema:
     ```bash
     cargo run -- create schema > path/to/my-generated-schema.json

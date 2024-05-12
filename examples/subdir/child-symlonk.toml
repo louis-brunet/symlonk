@@ -2,7 +2,6 @@
 
 [symlinks]
 a = "A"
-b = "B"
 
 [config]
 extends = "../root-symlonk.toml"

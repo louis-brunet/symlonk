@@ -45,6 +45,7 @@ impl TryFrom<char> for CreateLinkPromptAction {
     }
 }
 
+/// Return true if link is created (including if it already existed)
 pub fn create_link(
     link_name: &Path,
     link_target: &Path,
@@ -53,9 +54,9 @@ pub fn create_link(
     let does_destination_exist = crate::path::path_exists(link_name)?;
     let is_all_action = options.overwrite_all || options.backup_all || options.skip_all;
     let mut action = None;
-    let mut overwrite = options.overwrite_all;
-    let mut backup = options.backup_all;
-    let mut skip = options.skip_all;
+    let mut overwrite = false; // options.overwrite_all;
+    let mut backup =  false; //options.backup_all;
+    let mut skip =  false; //options.skip_all;
     let log = log::Logger::default();
 
     if does_destination_exist && !is_all_action {
@@ -71,7 +72,8 @@ pub fn create_link(
                 link_name.to_string_lossy(),
                 link_target.to_string_lossy()
             ));
-            skip = true;
+            // skip = true;
+            return Ok(true);
         } else {
             action = prompt_existing_destination(link_name, link_target)?;
         }
