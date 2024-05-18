@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 
 use crate::lock::LockFile;
 
-/// Simple program to greet a person
+/// Symlink management tool that uses a lock file to track create symlinks
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct SymlonkArgs {
@@ -18,6 +18,7 @@ pub enum SymlonkCommand {
     #[command(subcommand)]
     Create(SymlonkCreateSubcommand),
 
+    /// Verify that the lock file matches config, that all symlinks in the lock file are created, and that symlinks point to existing files
     Verify {
         #[arg(short, long)]
         config_files: Option<Vec<PathBuf>>,
@@ -26,6 +27,7 @@ pub enum SymlonkCommand {
         lock_file: PathBuf,
     },
 
+    /// Delete all created symlinks stored in the given lock file from the file system
     Unlink {
         #[arg(default_value = LockFile::DEFAULT_LOCK_FILE_PATH)]
         lock_file: PathBuf,
@@ -64,7 +66,7 @@ pub enum SymlonkCreateSubcommand {
         #[arg(short, long, default_value_t = false)]
         verify: bool,
 
-        // TODO: add argument --dry-run
+        // TODO: add argument --dry-run ?
 
         // #[arg(short, long, default_value_t = false)]
         // overwrite: bool,
@@ -76,6 +78,7 @@ pub enum SymlonkCreateSubcommand {
         // skip: bool,
     },
 
+    /// Generate a JSON schema for symlonk configuration files
     Schema,
     // Example,
 }
