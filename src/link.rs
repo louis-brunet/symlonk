@@ -55,8 +55,8 @@ pub fn create_link(
     let is_all_action = options.overwrite_all || options.backup_all || options.skip_all;
     let mut action = None;
     let mut overwrite = false; // options.overwrite_all;
-    let mut backup =  false; //options.backup_all;
-    let mut skip =  false; //options.skip_all;
+    let mut backup = false; //options.backup_all;
+    let mut skip = false; //options.skip_all;
     let log = log::Logger::default();
 
     if does_destination_exist && !is_all_action {
@@ -123,7 +123,12 @@ pub fn create_link(
         }
 
         if overwrite || options.overwrite_all {
-            std::fs::remove_file(link_name).expect("remove_file");
+            let is_dir = std::fs::metadata(link_name).expect("fs::metadata").is_dir();
+            if is_dir {
+                std::fs::remove_dir(link_name).expect("remove_dir")
+            } else {
+                std::fs::remove_file(link_name).expect("remove_file");
+            }
             log.success(format_args!("removed {}", link_name.to_string_lossy()))
         }
 
