@@ -24,7 +24,10 @@ pub enum LockFileVerifyError {
         disk_link_target: Option<PathBuf>,
     },
     // SymlinkNotFoundInLockFile(PathBuf),
-    SymlinkNotFoundInLockFile { symlink_name: PathBuf, lock_file_path: PathBuf },
+    SymlinkNotFoundInLockFile {
+        symlink_name: PathBuf,
+        lock_file_path: PathBuf,
+    },
     SymlinkNotFoundInConfig(PathBuf),
     InvalidSymlinkTargetInLockFile {
         link_name: PathBuf,
@@ -168,7 +171,7 @@ impl LockFile {
                 }
 
                 None => {
-                    return Err(LockFileVerifyError::SymlinkNotFoundInLockFile{
+                    return Err(LockFileVerifyError::SymlinkNotFoundInLockFile {
                         symlink_name: config_link_name.clone(),
                         lock_file_path: self.file_path.clone(),
                     });
@@ -240,7 +243,13 @@ impl LockFile {
     ) -> Vec<(PathBuf, PathBuf)> {
         self.symlinks
             .iter()
-            .filter(|(name, _)| !config_symlinks.contains_key(*name))
+            .filter(|(lockfile_name, lockfile_target)| {
+                config_symlinks
+                    .get(*lockfile_name)
+                    .is_none_or(|config_target| {
+                        config_target.as_path() != lockfile_target.as_path()
+                    })
+            })
             .map(|(name, target)| (name.clone(), target.clone()))
             .collect()
     }
@@ -288,7 +297,10 @@ pub fn verify(lock_file_path: &Path, config_files: Option<Vec<PathBuf>>) {
     if let Some(config_files) = config_files {
         let config_symlinks = crate::config::parse_symlinks_from_config_files(&config_files)
             .unwrap_or_else(|error| {
-                log.error(format_args!("[parse_symlinks_from_config_files] {:?}", error));
+                log.error(format_args!(
+                    "[parse_symlinks_from_config_files] {:?}",
+                    error
+                ));
                 panic!()
             });
 
@@ -305,12 +317,10 @@ pub fn verify(lock_file_path: &Path, config_files: Option<Vec<PathBuf>>) {
 
     match lock_file.verify_symlinks_created() {
         Ok(_) => {
-            log.info(
-                format_args!(
-                    "verify: {} symlinks from lock file are created",
-                    lock_file.symlink_count()
-                ),
-            );
+            log.info(format_args!(
+                "verify: {} symlinks from lock file are created",
+                lock_file.symlink_count()
+            ));
         }
         Err(error) => {
             log.error(format_args!("verify: {}", error));
@@ -319,12 +329,10 @@ pub fn verify(lock_file_path: &Path, config_files: Option<Vec<PathBuf>>) {
 
     match lock_file.verify_symlink_targets_exist() {
         Ok(_) => {
-            log.info(
-                format_args!(
-                    "verify: {} symlinks point to existing files",
-                    lock_file.symlink_count()
-                ),
-            );
+            log.info(format_args!(
+                "verify: {} symlinks point to existing files",
+                lock_file.symlink_count()
+            ));
         }
         Err(error) => {
             log.error(format_args!("verify: {}", error));
