@@ -120,11 +120,17 @@ pub fn run() {
                 for (name, _target) in symlinks_to_delete {
                     match std::fs::remove_file(name.as_path()) {
                         Ok(()) => {
-                            lock_file.remove_symlink(name.as_path());
                             log.success(format_args!("prune: unlink {}", name.to_string_lossy()))
                         }
-                        Err(error) => log.error(format_args!("prune: {}", error)),
+                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => log.info(
+                            format_args!("prune: {} already gone", name.to_string_lossy()),
+                        ),
+                        Err(error) => {
+                            log.error(format_args!("prune: {}", error));
+                            continue;
+                        }
                     }
+                    lock_file.remove_symlink(name.as_path());
                 }
             }
 
